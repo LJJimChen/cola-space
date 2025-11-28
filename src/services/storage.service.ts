@@ -15,7 +15,13 @@ type Meta = {
 
 @Injectable()
 export class StorageService {
-  private dataDir = path.join(process.cwd(), 'data');
+  private dataDir = (() => {
+    const raw = (process.env.DATA_DIR || '').trim();
+    if (raw) {
+      return path.isAbsolute(raw) ? raw : path.join(process.cwd(), raw);
+    }
+    return path.join(process.cwd(), '.data');
+  })();
   private yamlPath = path.join(this.dataDir, 'latest.yml');
   private metaPath = path.join(this.dataDir, 'meta.json');
   private nodesPath = path.join(this.dataDir, 'nodes.json');
