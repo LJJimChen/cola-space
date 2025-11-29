@@ -102,7 +102,7 @@ export class StorageService {
   }
 
   async readSampleYaml() {
-    const p = path.join(process.cwd(), 'sample.yml');
+    const p = path.join(process.cwd(), 'data-sample/sample.yml');
     const txt = await fs.readFile(p, 'utf-8');
     return txt;
   }
