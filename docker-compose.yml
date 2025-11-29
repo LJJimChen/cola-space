@@ -4,6 +4,7 @@ services:
     build: .
     image: cola-space:latest
     container_name: cola-space
+    platform: "linux/amd64"
     env_file:
       - .env.local
     ports:

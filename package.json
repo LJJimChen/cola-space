@@ -16,13 +16,10 @@
     "start:dev": "ts-node src/main.ts",
     "build": "tsc -p tsconfig.json",
     "postinstall": "npx playwright install --with-deps chromium || true",
-    "docker:build": "docker build -t cola-space:latest .",
-    "docker:run:localenv": "bash -c 'docker run -d --name cola-space -p 3001:3001 --shm-size=1g --env-file /Users/clj/Documents/jim/src/node/cola-space/.env.local -v $PWD/.data:/app/.data cola-space:latest'",
-    "docker:stop": "docker stop cola-space || true",
-    "docker:rm": "docker rm -f cola-space || true",
-    "docker:rebuild:localenv": "npm run docker:rm && npm run docker:build && npm run docker:run:localenv",
-    "docker:login:hub": "bash -c 'if [ -z \"$DOCKER_USERNAME\" ] || [ -z \"$DOCKER_PASSWORD\" ]; then echo \"Set DOCKER_USERNAME and DOCKER_PASSWORD\"; exit 1; fi; echo \"$DOCKER_PASSWORD\" | docker login -u \"$DOCKER_USERNAME\" --password-stdin'",
-    "docker:login:ghcr": "bash -c 'if [ -z \"$GHCR_USER\" ] || [ -z \"$GHCR_TOKEN\" ]; then echo \"Set GHCR_USER and GHCR_TOKEN\"; exit 1; fi; echo \"$GHCR_TOKEN\" | docker login ghcr.io -u \"$GHCR_USER\" --password-stdin'"
+    "compose:up": "docker compose up -d",
+    "compose:logs": "docker compose logs -f",
+    "compose:down": "docker compose down",
+    "compose:build": "docker compose build"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
