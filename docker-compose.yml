@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  cola-space:
+    build: .
+    image: cola-space:latest
+    container_name: cola-space
+    env_file:
+      - .env.local
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./.data:/app/.data
+    shm_size: "1g"
+    restart: unless-stopped
