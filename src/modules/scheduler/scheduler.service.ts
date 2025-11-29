@@ -20,6 +20,7 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     const expr = process.env.CRON_EXPR || '0 3 * * *';
+    const tz = process.env.CRON_TZ || process.env.TZ || 'Asia/Shanghai';
     this.job = new CronJob(expr, async () => {
       if (process.env.CRON_ENABLED === 'false') return;
       try {
@@ -28,10 +29,10 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       } catch (e: any) {
         this.logger.error(`refresh failed ${e?.message || e}`);
       }
-    });
+    }, undefined, false, tz);
     this.schedulerRegistry.addCronJob('subscribeRefresh', this.job);
     this.job.start();
-    this.logger.log(`cron started with expr: ${expr}`);
+    this.logger.log(`cron started with expr: ${expr} tz: ${tz}`);
   }
 
   onModuleDestroy() {
