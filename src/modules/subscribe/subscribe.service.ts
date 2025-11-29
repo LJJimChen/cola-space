@@ -14,20 +14,14 @@ export class SubscribeService {
   async refresh() {
     const url = await this.crawler.getSubscriptionUrl();
     const r = await this.fetcher.fetchYaml(url);
-    await this.storage.saveYaml(url, r.data, r.headers, r.status, r.statusText);
+    await this.storage.saveYaml(url, r.data);
     return { url };
   }
 
   async getLatestYaml() {
     const yaml = await this.storage.getLatestYaml();
     const etag = this.storage.computeEtag(yaml);
-    const meta = await this.storage.getLatestUrl();
-    return {
-      yaml,
-      etag,
-      headers: (meta as any).headers || {},
-      status: (meta as any).status || 200,
-    };
+    return { yaml, etag };
   }
 
   async getLatestUrl() {
