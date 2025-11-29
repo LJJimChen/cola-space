@@ -2,6 +2,7 @@ FROM mcr.microsoft.com/playwright:v1.48.0-jammy AS build
 WORKDIR /app
 COPY package.json package.json
 COPY package-lock.json package-lock.json
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN npm ci
 COPY tsconfig.json tsconfig.json
 COPY src src
@@ -14,6 +15,7 @@ COPY package.json package.json
 COPY package-lock.json package-lock.json
 COPY --from=build /app/dist dist
 COPY --from=build /app/sample.yml sample.yml
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN npm ci --omit=dev
 ENV PORT=3000
 ENV CRON_ENABLED=true

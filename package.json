@@ -15,7 +15,7 @@
     "start": "node dist/main.js",
     "start:dev": "ts-node src/main.ts",
     "build": "tsc -p tsconfig.json",
-    "postinstall": "npx playwright install --with-deps || true",
+    "postinstall": "npx playwright install --with-deps chromium || true",
     "docker:build": "docker build -t cola-space:latest .",
     "docker:run": "docker run -d --name cola-space -p 3000:3000 --shm-size=1g -v $PWD/.data:/app/.data cola-space:latest",
     "docker:stop": "docker stop cola-space || true",
