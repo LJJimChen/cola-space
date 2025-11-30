@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { chromium } from 'playwright';
 
 @Injectable()
@@ -6,6 +6,7 @@ export class CrawlerService {
   private baseUrl = process.env.COFFEE_BASE_URL || 'https://love-coffee.io';
   private loginUrl = `${this.baseUrl}/#/login`;
   // private dashboardUrl = `${this.baseUrl}/#/dashboard`;
+  private readonly logger = new Logger(CrawlerService.name);
 
   async getSubscriptionUrl(): Promise<string> {
     const headless = process.env.HEADLESS !== 'false';
@@ -15,6 +16,7 @@ export class CrawlerService {
     const redirectTimeoutMs = process.env.REDIRECT_TIMEOUT_MS
       ? Number(process.env.REDIRECT_TIMEOUT_MS)
       : 15000;
+    this.logger.log(`start headless=${headless} base=${this.baseUrl}`);
     const browser = await chromium.launch({ headless, slowMo: stepDelayMs });
     const context = await browser.newContext({
       userAgent:
@@ -41,12 +43,14 @@ export class CrawlerService {
         await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
           origin: this.baseUrl,
         });
+        this.logger.log(`redirected base to ${this.baseUrl}`);
       }
     }
     const username = process.env.COFFEE_USERNAME || '';
     const password = process.env.COFFEE_PASSWORD || '';
     let onDashboard = /#\/dashboard/.test(page.url());
     if (!onDashboard) {
+      this.logger.log('navigate login');
       await page.goto(this.loginUrl, { waitUntil: 'networkidle' });
       onDashboard = /#\/dashboard/.test(page.url());
       if (!onDashboard) {
@@ -65,6 +69,7 @@ export class CrawlerService {
             if (c > 0) {
               await l.first().fill(username);
               filledUser = true;
+              this.logger.log('filled username');
               break;
             }
           } catch (_) {}
@@ -82,6 +87,7 @@ export class CrawlerService {
             if (c > 0) {
               await l.first().fill(password);
               filledPass = true;
+              this.logger.log('filled password');
               break;
             }
           } catch (_) {}
@@ -97,6 +103,7 @@ export class CrawlerService {
             const c = await l.count();
             if (c > 0) {
               await l.first().click();
+              this.logger.log('clicked login');
               break;
             }
           } catch (_) {}
@@ -106,12 +113,14 @@ export class CrawlerService {
         });
       }
     }
+    this.logger.log('dashboard ready');
     await page.waitForLoadState('networkidle');
     await page
       .locator(
         '#main-container > div > div:nth-child(3) > div > div > div.block-content.p-0 > div > div > div:nth-child(2)'
       )
       .click();
+    this.logger.log('open subscription modal');
     await page.waitForSelector('body div.ant-modal-wrap.ant-modal-centered', {
       timeout: 30000,
     });
@@ -119,6 +128,7 @@ export class CrawlerService {
       'body div.ant-modal-wrap.ant-modal-centered div.item___yrtOv.subsrcibe-for-link'
     );
     await target.click();
+    this.logger.log('click subscription link');
     await page.waitForTimeout(1000);
     let url = await target.getAttribute('data-clipboard-text');
     if (!url) {
@@ -128,12 +138,14 @@ export class CrawlerService {
         ) as HTMLElement | null;
         return el ? el.getAttribute('data-clipboard-text') : null;
       });
+      if (url) this.logger.log('got url from attribute');
     }
     if (!url) {
       try {
         const clip = await page.evaluate(() => navigator.clipboard.readText());
         if (clip && /^https?:\/\//.test(clip)) url = clip;
       } catch (_) {}
+      if (url) this.logger.log('got url from clipboard');
     }
     if (!url) {
       await target.click();
@@ -144,9 +156,11 @@ export class CrawlerService {
       const text = await target.innerText();
       const match = text.match(/https?:\/\/[^\s]+/);
       if (match) url = match[0];
+      if (url) this.logger.log('got url from inner text');
     }
     await browser.close();
     if (!url) throw new Error('subscription url not found');
+    this.logger.log('subscription url found');
     return url;
   }
 }
