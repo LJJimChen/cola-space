@@ -8,6 +8,7 @@ type Meta = {
   url: string;
   fetchedAt: string;
   counts: { proxies: number; groups: number; rules: number };
+  headers?: Record<string, string>;
 };
 
 @Injectable()
@@ -31,7 +32,11 @@ export class StorageService {
     return crypto.createHash('md5').update(content).digest('hex');
   }
 
-  async saveYaml(url: string, yaml: string) {
+  async saveYaml(
+    url: string,
+    yaml: string,
+    headers?: Record<string, string>,
+  ) {
     await this.ensureDir();
     let proxiesCount = 0;
     let groupsCount = 0;
@@ -52,6 +57,7 @@ export class StorageService {
       url,
       fetchedAt: new Date().toISOString(),
       counts: { proxies: proxiesCount, groups: groupsCount, rules: rulesCount },
+      headers
     };
     await fs.writeFile(this.yamlPath, yaml, 'utf-8');
     await fs.writeFile(this.metaPath, JSON.stringify(meta), 'utf-8');

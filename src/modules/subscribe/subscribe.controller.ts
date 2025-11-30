@@ -16,7 +16,8 @@ export class SubscribeController {
 
   @Get('clash')
   async getClash(@Res() res: any, @Headers('if-none-match') inm?: string) {
-    const { yaml, etag } = await this.subscribeService.getLatestYaml();
+    const { yaml, etag, headers } =
+      await this.subscribeService.getLatestYaml();
     if (etag && inm && inm === etag) {
       res.status(304);
       res.end();
@@ -24,6 +25,14 @@ export class SubscribeController {
     }
     res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
     if (etag) res.setHeader('ETag', etag);
+    if (headers) {
+      for (const k of Object.keys(headers)) {
+        const v = headers[k];
+        if (v && ['content-disposition', 'subscription-userinfo'].includes(k.toLowerCase())) {
+          res.setHeader(k, v);
+        }
+      }
+    }
     res.send(yaml);
   }
 
