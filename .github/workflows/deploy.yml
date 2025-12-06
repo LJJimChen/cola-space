@@ -13,19 +13,19 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to server
-  uses: appleboy/ssh-action@v1.1.0
-  with:
-    host: ${{ secrets.SSH_HOST }}
-    username: ${{ secrets.SSH_USER }}
-    key: ${{ secrets.SSH_KEY }}
-    script: |
-      cd ${{ secrets.PROJECT_DIR }}
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ${{ secrets.PROJECT_DIR }}
 
-      # 调用 Node.js 脚本生成 .env.local
-      node deploy/generateEnv.js \
-      _CUSTOM_CRON_EXPR=${{ secrets.CRON_EXPR }} \
-      _CUSTOM_COFFEE_USERNAME=${{ secrets.COFFEE_USERNAME }} \
-      _CUSTOM_COFFEE_PASSWORD=${{ secrets.COFFEE_PASSWORD }} \
+            # 调用 Node.js 脚本生成 .env.local，传入参数
+            node deploy/generateEnv.js \
+              _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" \
+              _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" \
+              _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}"
 
-      # 执行部署脚本
-      node deploy/deploy.js
+            # 执行部署脚本
+            node deploy/deploy.js
