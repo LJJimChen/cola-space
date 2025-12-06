@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CrawlerService } from '../../services/crawler.service';
 import { FetcherService } from '../../services/fetcher.service';
 import { StorageService } from '../../services/storage.service';
@@ -10,12 +10,37 @@ export class SubscribeService {
     private readonly fetcher: FetcherService,
     private readonly storage: StorageService
   ) {}
+  private readonly logger = new Logger(SubscribeService.name);
 
   async refresh() {
-    const url = await this.crawler.getSubscriptionUrl();
-    const r = await this.fetcher.fetchYaml(url);
-    await this.storage.saveYaml(url, r.data, r.headers);
-    return { url };
+    this.logger.log('refresh start');
+    const meta = await this.storage.getLatestUrl();
+    if (meta && meta.url) {
+      try {
+        this.logger.log('try fetch via meta url');
+        const r = await this.fetcher.fetchYaml(meta.url);
+        await this.storage.saveYaml(meta.url, r.data, r.headers);
+        this.logger.log('fetched and saved via meta url');
+        return { url: meta.url };
+      } catch (_) {
+        this.logger.warn('fetch via meta url failed');
+      }
+    }
+    this.logger.log('fallback to crawler');
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        const url = await this.crawler.getSubscriptionUrl();
+        this.logger.log(`crawler obtained url attempt ${attempt}`);
+        const r = await this.fetcher.fetchYaml(url);
+        await this.storage.saveYaml(url, r.data, r.headers);
+        this.logger.log('fetched and saved via crawler url');
+        return { url };
+      } catch (_) {
+        this.logger.warn(`crawler attempt ${attempt} failed`);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+    throw new Error('refresh failed after 5 attempts');
   }
 
   async getLatestYaml() {
