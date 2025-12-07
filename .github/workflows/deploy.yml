@@ -15,14 +15,9 @@ jobs:
       - name: Get repo name only
         run: echo "REPO_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
 
-      - name: Upload init script via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: deploy/init-repo.bat
-          target: C:/Windows/Temp/init-repo-${{ env.REPO_NAME }}.bat
+      - name: Encode init script
+        id: encode_script
+        run: echo "script_content=$(base64 -w 0 deploy/init-repo.bat)" >> $GITHUB_OUTPUT
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.1.0
@@ -32,6 +27,9 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script_stop: true
           script: |
+            echo ${{ steps.encode_script.outputs.script_content }} > C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat.b64
+            certutil -f -decode C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat.b64 C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat
+            del C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat.b64
             cmd /c "\"C:\\Windows\\Temp\\init-repo-${{ env.REPO_NAME }}.bat\" \"${{ secrets.PROJECT_DIR }}\" \"${{ github.server_url }}/${{ github.repository }}\""
             cd ${{ secrets.PROJECT_DIR }}
             
