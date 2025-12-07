@@ -12,14 +12,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Upload init script
-        uses: appleboy/scp-action@v0.1.7
+      - name: Upload init script via SFTP
+        uses: appleboy/sftp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           source: deploy/init-repo.bat
-          target: ~
+          target: C:/Windows/Temp
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.1.0
@@ -29,8 +29,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script_stop: true
           script: |
-            cmd /c "copy \"%USERPROFILE%\\init-repo.bat\" \"%TEMP%\\init-repo.bat\""
-            cmd /c "\"%TEMP%\\init-repo.bat\" \"${{ secrets.PROJECT_DIR }}\" \"${{ github.server_url }}/${{ github.repository }}\""
+            cmd /c "\"C:\\Windows\\Temp\\init-repo.bat\" \"${{ secrets.PROJECT_DIR }}\" \"${{ github.server_url }}/${{ github.repository }}\""
             cd ${{ secrets.PROJECT_DIR }}
             
             # 调用 Node.js 脚本生成 .env.local，传入参数
