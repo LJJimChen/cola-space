@@ -12,14 +12,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Upload init script via SFTP
-        uses: appleboy/sftp-action@v0.1.7
+      - name: Upload init script via SCP
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           source: deploy/init-repo.bat
-          target: C:/Windows/Temp
+          target: /C:/Windows/Temp
+          overwrite: true
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.1.0
