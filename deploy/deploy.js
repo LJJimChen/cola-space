@@ -63,14 +63,14 @@ const exists = tryRun(`pm2 describe ${appName}`);
 
 if (exists) {
   console.log(`✔ PM2 已存在 ${appName}，重启...`);
-  run(`npx pm2 restart ${appName}`);
+  run(`pnpx pm2 restart ${appName}`);
 } else {
   console.log(`⚠ PM2 未检测到 ${appName}，使用 ecosystem.config.js 启动...`);
-  run(`npx pm2 start ${ecosysPath}`);
+  run(`pnpx pm2 start ${ecosysPath}`);
 }
 
 console.log("\n===== 5. 保存 PM2 状态 =====");
-run("npx pm2 save");
+run("pnpx pm2 save");
 
 console.log("\n===== 部署完成 =====");
 console.log("Platform:", os.platform());
