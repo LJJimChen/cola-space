@@ -15,14 +15,10 @@ jobs:
         run: tar -czf /tmp/project.tar.gz .
 
       - name: Upload project archive
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: "/tmp/project.tar.gz"
-          target: "/C:/Windows/Temp"
-          overwrite: true
+        run: |
+          echo "${{ secrets.SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+          scp -i private_key.pem -o StrictHostKeyChecking=no /tmp/project.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Windows/Temp/project.tar.gz
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.1.0
@@ -33,7 +29,7 @@ jobs:
           script: |
             if not exist "${{ secrets.PROJECT_DIR }}" mkdir "${{ secrets.PROJECT_DIR }}"
             tar -xzf C:/Windows/Temp/project.tar.gz -C "${{ secrets.PROJECT_DIR }}"
-            del C:\Windows\Temp\project.tar.gz
+            rm C:/Windows/Temp/project.tar.gz
             cd ${{ secrets.PROJECT_DIR }}
             node deploy/generateEnv.js \
               _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" \
