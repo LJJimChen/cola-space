@@ -27,9 +27,15 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            if not exist "${{ secrets.PROJECT_DIR }}" mkdir "${{ secrets.PROJECT_DIR }}"
-            tar -xzf C:/Windows/Temp/project.tar.gz -C "${{ secrets.PROJECT_DIR }}"
-            del C:\Windows\Temp\project.tar.gz
-            cd ${{ secrets.PROJECT_DIR }}
-            node deploy/generateEnv.js _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}"
+            echo "Step 1: Create project directory if it does not exist"
+            if not exist "${{ secrets.PROJECT_DIR }}" mkdir "${{ secrets.PROJECT_DIR }}" && \
+            echo "Step 2: Extract project archive" && \
+            tar -xzf C:/Windows/Temp/project.tar.gz -C "${{ secrets.PROJECT_DIR }}" && \
+            echo "Step 3: Delete temporary archive" && \
+            del C:\\Windows\\Temp\\project.tar.gz && \
+            echo "Step 4: Change to project directory" && \
+            cd ${{ secrets.PROJECT_DIR }} && \
+            echo "Step 5: Generate environment file" && \
+            node deploy/generateEnv.js _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}" && \
+            echo "Step 6: Run deployment script" && \
             node deploy/deploy.js
