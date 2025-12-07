@@ -21,21 +21,7 @@ jobs:
           scp -i private_key.pem -o StrictHostKeyChecking=no /tmp/project.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Windows/Temp/project.tar.gz
 
       - name: Deploy on server
-        uses: appleboy/ssh-action@v1.1.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            echo "Step 1: Create project directory if it does not exist"
-            if not exist "${{ secrets.PROJECT_DIR }}" mkdir "${{ secrets.PROJECT_DIR }}" && \
-            echo "Step 2: Extract project archive" && \
-            tar -xzf C:/Windows/Temp/project.tar.gz -C "${{ secrets.PROJECT_DIR }}" && \
-            echo "Step 3: Delete temporary archive" && \
-            del C:\\Windows\\Temp\\project.tar.gz && \
-            echo "Step 4: Change to project directory" && \
-            cd ${{ secrets.PROJECT_DIR }} && \
-            echo "Step 5: Generate environment file" && \
-            node deploy/generateEnv.js _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}" && \
-            echo "Step 6: Run deployment script" && \
-            node deploy/deploy.js
+        run: |
+          echo "${{ secrets.SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.PROJECT_DIR }} && git pull && deploy/remote_deploy.bat \"${{ secrets.PROJECT_DIR }}\" \"${{ secrets.CRON_EXPR }}\" \"${{ secrets.COFFEE_USERNAME }}\" \"${{ secrets.COFFEE_PASSWORD }}\""
