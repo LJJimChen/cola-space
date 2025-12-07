@@ -21,17 +21,24 @@ jobs:
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.1.0
+        env:
+          SCRIPT_CONTENT: ${{ steps.encode_script.outputs.script_content }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script_stop: true
           script: |
-            echo ${{ steps.encode_script.outputs.script_content }} > C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat.b64
+            echo "%SCRIPT_CONTENT%" > C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat.b64
+            echo "Step 1: Wrote base64 content to file"
             certutil -f -decode C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat.b64 C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat
+            echo "Step 2: Decoded base64 file"
             del C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat.b64
+            echo "Step 3: Deleted temporary base64 file"
             cmd /c "\"C:\\Windows\\Temp\\init-repo-${{ env.REPO_NAME }}.bat\" \"${{ secrets.PROJECT_DIR }}\" \"${{ github.server_url }}/${{ github.repository }}\""
+            echo "Step 4: Executed init-repo.bat"
             cd ${{ secrets.PROJECT_DIR }}
+            echo "Step 5: Changed to project directory"
             
             # 调用 Node.js 脚本生成 .env.local，传入参数
             node deploy/generateEnv.js \
