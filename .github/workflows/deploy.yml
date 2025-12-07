@@ -7,6 +7,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # PROJECT_DIR: ${{ vars.PROJECT_DIR }}
+      # REPO_NAME: ${{ github.event.repository.name }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,14 +23,14 @@ jobs:
           chmod 600 private_key.pem
           scp -i private_key.pem -o StrictHostKeyChecking=no deploy/init-repo.bat ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Windows/Temp/init-repo-${{ env.REPO_NAME }}.bat
 
-      - name: Init repository on server
+      - name: Checkout repository on server
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            powershell -Command "& 'C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat' '${{ env.PROJECT_DIR }}' '${{ github.server_url }}/${{ github.repository }}'"
+            powershell -Command "& 'C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat' '${{ vars.PROJECT_DIR  }}' '${{ github.server_url }}/${{ github.repository }}'"
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.1.0
@@ -36,4 +39,4 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd ${{ env.PROJECT_DIR }} & node deploy\generateEnv.js _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}" & node deploy\deploy.js
+            cd ${{ vars.PROJECT_DIR }} & node deploy\generateEnv.js _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}" & node deploy\deploy.js
