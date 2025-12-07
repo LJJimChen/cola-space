@@ -19,8 +19,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           source: deploy/init-repo.bat
-          target: C:/Windows/Temp/cola-space
-          overwrite: true
+          target: C:/Windows/Temp/init-repo-${{ github.repository }}.bat
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.1.0
@@ -30,7 +29,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script_stop: true
           script: |
-            cmd /c "\"C:\\Windows\\Temp\\cola-space\\init-repo.bat\" \"${{ secrets.PROJECT_DIR }}\" \"${{ github.server_url }}/${{ github.repository }}\""
+            cmd /c "\"C:\\Windows\\Temp\\init-repo-${{ github.repository }}.bat\" \"${{ secrets.PROJECT_DIR }}\" \"${{ github.server_url }}/${{ github.repository }}\""
             cd ${{ secrets.PROJECT_DIR }}
             
             # 调用 Node.js 脚本生成 .env.local，传入参数
