@@ -11,36 +11,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 步骤 1: 上传整个项目到服务器
-      - name: Upload project files via SCP
+      - name: Archive project
+        run: tar -czf project.tar.gz .
+
+      - name: Upload project archive
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: "." # 上传当前目录（整个项目）
-          target: "${{ secrets.PROJECT_DIR }}" # 直接上传到最终的项目目录
-          overwrite: true # 覆盖旧文件
+          source: "project.tar.gz"
+          target: "C:/Windows/Temp"
+          overwrite: true
 
-      # 步骤 2: 在服务器上执行部署脚本
-      - name: Execute deployment commands
+      - name: Deploy on server
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            # 进入项目目录
+            if not exist "${{ secrets.PROJECT_DIR }}" mkdir "${{ secrets.PROJECT_DIR }}"
+            tar -xzf C:/Windows/Temp/project.tar.gz -C "${{ secrets.PROJECT_DIR }}"
+            del C:\Windows\Temp\project.tar.gz
             cd ${{ secrets.PROJECT_DIR }}
-            echo "Step 1: Changed to project directory"
-
-            # 调用 Node.js 脚本生成 .env.local
             node deploy/generateEnv.js \
               _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" \
               _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" \
               _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}"
-            echo "Step 2: Generated .env.local"
-
-            # 执行主部署脚本
             node deploy/deploy.js
-            echo "Step 3: Executed deploy.js"
