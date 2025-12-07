@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            powershell -Command "& 'C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat' '${{ secrets.PROJECT_DIR }}' '${{ github.server_url }}/${{ github.repository }}'"
+            powershell -Command "& 'C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat' 'C:\app-services\cola-space' '${{ github.server_url }}/${{ github.repository }}'"
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.1.0
@@ -36,7 +36,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd ${{ secrets.PROJECT_DIR }} &
+            cd C:\app-services\cola-space &
             node deploy/generateEnv.js \
               _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" \
               _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" \
