@@ -20,31 +20,24 @@ jobs:
         run: echo "script_content=$(base64 -w 0 deploy/init-repo.bat)" >> $GITHUB_OUTPUT
 
       - name: Deploy to server
-        uses: appleboy/ssh-action@v1.1.0
-        env:
-          SCRIPT_CONTENT: ${{ steps.encode_script.outputs.script_content }}
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script_stop: true
-          script: |
-            echo "%SCRIPT_CONTENT%" > C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat.b64
-            echo "Step 1: Wrote base64 content to file"
-            certutil -f -decode C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat.b64 C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat
-            echo "Step 2: Decoded base64 file"
-            del C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat.b64
-            echo "Step 3: Deleted temporary base64 file"
-            cmd /c "\"C:\\Windows\\Temp\\init-repo-${{ env.REPO_NAME }}.bat\" \"${{ secrets.PROJECT_DIR }}\" \"${{ github.server_url }}/${{ github.repository }}\""
-            echo "Step 4: Executed init-repo.bat"
+        run: |
+          echo "${{ secrets.SSH_KEY }}" > private_key
+          chmod 600 private_key
+          ssh -o StrictHostKeyChecking=no -i private_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
+            set > C:\\Windows\\Temp\\env.txt
+            type C:\\Windows\\Temp\\env.txt
+            echo \"${{ steps.encode_script.outputs.script_content }}\" > C:\\Windows\\Temp\\init-repo.bat.b64
+            echo \"Step 1: Wrote base64 content to file\"
+            certutil -f -decode C:\\Windows\\Temp\\init-repo.bat.b64 C:\\Windows\\Temp\\init-repo.bat
+            echo \"Step 2: Decoded base64 file\"
+            del C:\\Windows\\Temp\\init-repo.bat.b64
+            echo \"Step 3: Deleted temporary base64 file\"
+            cmd /c \"\\\"C:\\\\Windows\\\\Temp\\\\init-repo.bat\\\" \\\"${{ secrets.PROJECT_DIR }}\\\" \\\"${{ github.server_url }}/${{ github.repository }}\\\"\"
+            echo \"Step 4: Executed init-repo.bat\"
             cd ${{ secrets.PROJECT_DIR }}
-            echo "Step 5: Changed to project directory"
-            
-            # 调用 Node.js 脚本生成 .env.local，传入参数
-            node deploy/generateEnv.js \
-              _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" \
-              _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" \
-              _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}"
-
-            # 执行部署脚本
+            echo \"Step 5: Changed to project directory\"
+            node deploy/generateEnv.js _CUSTOM_CRON_EXPR=\\"${{ secrets.CRON_EXPR }}\\" _CUSTOM_COFFEE_USERNAME=\\"${{ secrets.COFFEE_USERNAME }}\\" _CUSTOM_COFFEE_PASSWORD=\\"${{ secrets.COFFEE_PASSWORD }}\\" 
+            echo \"Step 6: Generated .env.local\"
             node deploy/deploy.js
+            echo \"Step 7: Executed deploy.js\"
+          "
