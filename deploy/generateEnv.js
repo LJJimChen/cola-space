@@ -3,17 +3,16 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
+const prefix = "_CUSTOM_";
 // process.argv[2...] 的格式是 ["KEY=value", "KEY2=value2"]
 const args = process.argv.slice(2);
 
-if (args.length === 0) {
-  console.log("没有收到任何参数，跳过生成 .env.local");
-  process.exit(0);
-}
+
 
 const envVars = {};
 
-args.forEach(arg => {
+const customArgs = args.filter(arg => arg.startsWith(prefix));
+customArgs.forEach(arg => { 
   const [key, ...rest] = arg.split("=");
   const value = rest.join("=");
   if (key && value !== undefined) {
@@ -29,5 +28,7 @@ const content = Object.entries(envVars)
 
 fs.writeFileSync(envPath, content, "utf8");
 
-console.log(`✔ 已生成 .env.local`);
-console.log(envVars);
+console.log(`✔ 已生成 .env.local`, envVars);
+if (customArgs.length === 0) {
+  console.warn("⚠️ 没有收到任何_CUSTOM_参数，.env.local 为空");
+}

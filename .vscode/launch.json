@@ -2,6 +2,35 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "DEBUG Deploy",
+      "program": "${workspaceFolder}/deploy/deploy.js",
+      "request": "launch",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "type": "node",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "DEBUG generateEnv",
+      "program": "${workspaceFolder}/deploy/generateEnv.js",
+      "request": "launch",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "type": "node",
+      "env": {
+        "_CUSTOM_CRON_EXPR": "0 9,18 * * *",
+        "_CUSTOM_COFFEE_USERNAME": "707039599@qq.com",
+        "_CUSTOM_COFFEE_PASSWORD": "Chen352817"
+      },"args": [
+        "aaa",
+        "_CUSTOM_CRON_EXPR=0 9,18 * * *",
+        "_CUSTOM_COFFEE_USERNAME=707039599@qq.com",
+        "_CUSTOM_COFFEE_PASSWORD=Chen352817"
+      ]
+    },
+    {
       "type": "node",
       "request": "launch",
       "name": "Debug",
