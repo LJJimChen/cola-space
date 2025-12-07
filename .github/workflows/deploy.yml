@@ -1,43 +1,36 @@
-name: Deploy
-
-on:
-  push:
-    branches: ["main"]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get repo name only
-        run: echo "REPO_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
+      # 步骤 1: 上传整个项目到服务器
+      - name: Upload project files via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "." # 上传当前目录（整个项目）
+          target: "${{ secrets.PROJECT_DIR }}" # 直接上传到最终的项目目录
+          overwrite: true # 覆盖旧文件
 
-      - name: Encode init script
-        id: encode_script
-        run: echo "script_content=$(base64 -w 0 deploy/init-repo.bat)" >> $GITHUB_OUTPUT
-
-      - name: Deploy to server
-        run: |
-          echo "${{ secrets.SSH_KEY }}" > private_key
-          chmod 600 private_key
-          ssh -o StrictHostKeyChecking=no -i private_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
-            set > C:\\Windows\\Temp\\env.txt
-            type C:\\Windows\\Temp\\env.txt
-            echo \"${{ steps.encode_script.outputs.script_content }}\" > C:\\Windows\\Temp\\init-repo.bat.b64
-            echo \"Step 1: Wrote base64 content to file\"
-            certutil -f -decode C:\\Windows\\Temp\\init-repo.bat.b64 C:\\Windows\\Temp\\init-repo.bat
-            echo \"Step 2: Decoded base64 file\"
-            del C:\\Windows\\Temp\\init-repo.bat.b64
-            echo \"Step 3: Deleted temporary base64 file\"
-            cmd /c \"\\\"C:\\\\Windows\\\\Temp\\\\init-repo.bat\\\" \\\"${{ secrets.PROJECT_DIR }}\\\" \\\"${{ github.server_url }}/${{ github.repository }}\\\"\"
-            echo \"Step 4: Executed init-repo.bat\"
+      # 步骤 2: 在服务器上执行部署脚本
+      - name: Execute deployment commands
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # 进入项目目录
             cd ${{ secrets.PROJECT_DIR }}
-            echo \"Step 5: Changed to project directory\"
-            node deploy/generateEnv.js _CUSTOM_CRON_EXPR=\\"${{ secrets.CRON_EXPR }}\\" _CUSTOM_COFFEE_USERNAME=\\"${{ secrets.COFFEE_USERNAME }}\\" _CUSTOM_COFFEE_PASSWORD=\\"${{ secrets.COFFEE_PASSWORD }}\\" 
-            echo \"Step 6: Generated .env.local\"
+            echo "Step 1: Changed to project directory"
+
+            # 调用 Node.js 脚本生成 .env.local
+            node deploy/generateEnv.js \
+              _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" \
+              _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" \
+              _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}"
+            echo "Step 2: Generated .env.local"
+
+            # 执行主部署脚本
             node deploy/deploy.js
-            echo \"Step 7: Executed deploy.js\"
-          "
+            echo "Step 3: Executed deploy.js"
