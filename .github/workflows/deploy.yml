@@ -21,10 +21,9 @@ jobs:
           BAR: "FOO"
           SHA: ${{ github.sha }}
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
           envs: FOO,BAR,SHA
           script: |
             echo "I am $FOO"
@@ -47,6 +46,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          envs: _CUSTOM_CRON_EXPR,_CUSTOM_COFFEE_USERNAME,_CUSTOM_COFFEE_PASSWORD
           script: |
             C:/Windows/Temp/init-repo-${{ env.REPO_NAME }}.bat "${{ secrets.PROJECT_DIR }}" "${{ github.server_url }}/${{ github.repository }}"
             cd ${{ secrets.PROJECT_DIR }}
