@@ -24,7 +24,7 @@ customArgs.forEach(arg => {
 // 写入 .env.local 到项目根目录
 const envPath = path.join(process.cwd(), ".env.local");
 const content = Object.entries(envVars)
-  .map(([k, v]) => `${k}=${v}`)
+  .map(([k, v]) => `${k.replace(prefix,"")}=${v}`)
   .join(os.EOL);
 
 fs.writeFileSync(envPath, content, "utf8");
