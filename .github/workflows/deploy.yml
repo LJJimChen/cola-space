@@ -36,9 +36,4 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd C:\app-services\cola-space &
-            node deploy/generateEnv.js \
-              _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" \
-              _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" \
-              _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}" &
-            node deploy/deploy.js
+            cd C:\app-services\cola-space & node deploy\generateEnv.js _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}" & node deploy\deploy.js
