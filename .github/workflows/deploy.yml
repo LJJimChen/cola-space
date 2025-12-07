@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Archive project
-        run: tar -czf project.tar.gz --exclude='./project.tar.gz' .
+        run: tar -czf ../project.tar.gz .
 
       - name: Upload project archive
         uses: appleboy/scp-action@v0.1.7
@@ -20,8 +20,8 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: "project.tar.gz"
-          target: "C:/Windows/Temp"
+          source: "../project.tar.gz"
+          target: "/C:/Windows/Temp"
           overwrite: true
 
       - name: Deploy on server
