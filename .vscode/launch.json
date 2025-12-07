@@ -25,9 +25,9 @@
         "_CUSTOM_COFFEE_PASSWORD": "Chen352817"
       },"args": [
         "aaa",
-        "_CUSTOM_CRON_EXPR=0 9,18 * * *",
-        "_CUSTOM_COFFEE_USERNAME=707039599@qq.com",
-        "_CUSTOM_COFFEE_PASSWORD=Chen352817"
+        // "_CUSTOM_CRON_EXPR=0 9,18 * * *",
+        // "_CUSTOM_COFFEE_USERNAME=707039599@qq.com",
+        // "_CUSTOM_COFFEE_PASSWORD=Chen352817"
       ]
     },
     {

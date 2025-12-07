@@ -8,9 +8,10 @@ const prefix = "_CUSTOM_";
 const args = process.argv.slice(2);
 
 
+// get from env
+const envVars = Object.fromEntries(Object.entries(process.env).filter(([k]) => k.startsWith(prefix)));
 
-const envVars = {};
-
+// get from argv
 const customArgs = args.filter(arg => arg.startsWith(prefix));
 customArgs.forEach(arg => { 
   const [key, ...rest] = arg.split("=");

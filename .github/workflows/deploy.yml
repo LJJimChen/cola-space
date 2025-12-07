@@ -11,17 +11,44 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Archive project
-        run: tar -czf /tmp/project.tar.gz .
+      - name: Get repo name only
+        run: echo "REPO_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
+      
+      - name: 传递环境变量
+        uses: appleboy/ssh-action@v1
+        env:
+          FOO: "BAR"
+          BAR: "FOO"
+          SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          envs: FOO,BAR,SHA
+          script: |
+            echo "I am $FOO"
+            echo "I am $BAR"
+            echo "sha: $SHA"
 
-      - name: Upload project archive
+      - name: Upload init script via SCP
         run: |
           echo "${{ secrets.SSH_KEY }}" > private_key.pem
           chmod 600 private_key.pem
-          scp -i private_key.pem -o StrictHostKeyChecking=no /tmp/project.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Windows/Temp/project.tar.gz
+          scp -i private_key.pem -o StrictHostKeyChecking=no deploy/init-repo.bat ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/C:/Windows/Temp/init-repo-${{ env.REPO_NAME }}.bat
 
-      - name: Deploy on server
-        run: |
-          echo "${{ secrets.SSH_KEY }}" > private_key.pem
-          chmod 600 private_key.pem
-          ssh -i private_key.pem -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.PROJECT_DIR }} && git pull && deploy/remote_deploy.bat \"${{ secrets.PROJECT_DIR }}\" \"${{ secrets.CRON_EXPR }}\" \"${{ secrets.COFFEE_USERNAME }}\" \"${{ secrets.COFFEE_PASSWORD }}\""
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.1.0
+        env:
+          _CUSTOM_CRON_EXPR: ${{ secrets.CRON_EXPR }}
+          _CUSTOM_COFFEE_USERNAME: ${{ secrets.COFFEE_USERNAME }}
+          _CUSTOM_COFFEE_PASSWORD: ${{ secrets.COFFEE_PASSWORD }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            C:/Windows/Temp/init-repo-${{ env.REPO_NAME }}.bat "${{ secrets.PROJECT_DIR }}" "${{ github.server_url }}/${{ github.repository }}"
+            cd ${{ secrets.PROJECT_DIR }}
+            node deploy/generateEnv.js
+            node deploy/deploy.js
