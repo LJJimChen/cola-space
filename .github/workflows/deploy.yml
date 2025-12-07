@@ -29,10 +29,7 @@ jobs:
           script: |
             if not exist "${{ secrets.PROJECT_DIR }}" mkdir "${{ secrets.PROJECT_DIR }}"
             tar -xzf C:/Windows/Temp/project.tar.gz -C "${{ secrets.PROJECT_DIR }}"
-            rm C:/Windows/Temp/project.tar.gz
+            del C:\Windows\Temp\project.tar.gz
             cd ${{ secrets.PROJECT_DIR }}
-            node deploy/generateEnv.js \
-              _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" \
-              _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" \
-              _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}"
+            node deploy/generateEnv.js _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" _CUSTOM_COFFEE_USERNAME="${{ secrets.COFFEE_USERNAME }}" _CUSTOM_COFFEE_PASSWORD="${{ secrets.COFFEE_PASSWORD }}"
             node deploy/deploy.js
