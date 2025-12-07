@@ -12,15 +12,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Upload init script
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: deploy/init-repo.bat
+          target: ~
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          script_stop: true
           script: |
+            cmd /c "copy \"%USERPROFILE%\\init-repo.bat\" \"%TEMP%\\init-repo.bat\""
+            cmd /c "\"%TEMP%\\init-repo.bat\" \"${{ secrets.PROJECT_DIR }}\" \"${{ github.server_url }}/${{ github.repository }}\""
             cd ${{ secrets.PROJECT_DIR }}
-
+            
             # 调用 Node.js 脚本生成 .env.local，传入参数
             node deploy/generateEnv.js \
               _CUSTOM_CRON_EXPR="${{ secrets.CRON_EXPR }}" \
