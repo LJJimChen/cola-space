@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            powershell -Command "& 'C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat' '${{ secrets.PROJECT_DIR }}' '${{ github.server_url }}/${{ github.repository }}'" & ls
+            powershell -Command "& 'C:\Windows\Temp\init-repo-${{ env.REPO_NAME }}.bat' '${{ secrets.PROJECT_DIR }}' '${{ github.server_url }}/${{ github.repository }}'"
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.1.0

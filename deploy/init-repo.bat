@@ -1,9 +1,9 @@
 @echo off
 setlocal
 
-echo Init repository on server, project dir: "%PROJECT_DIR%", repo url: "%2"
 
-set PROJECT_DIR= "%1"
+set "PROJECT_DIR= %1"
+echo Init repository on server, project dir: "%PROJECT_DIR%", repo url: "%2"
 
 
 if not exist "%PROJECT_DIR%" (
