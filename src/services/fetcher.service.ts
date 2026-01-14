@@ -110,6 +110,84 @@ function buildClashYamlFromSs(raw: string) {
   return stringify(doc);
 }
 
+function enhanceClashConfig(yamlString: string) {
+  let doc: any;
+  try {
+    doc = parse(yamlString);
+  } catch (e) {
+    return yamlString;
+  }
+
+  if (!doc || !doc.proxies || !Array.isArray(doc.proxies)) {
+    return yamlString;
+  }
+
+  const proxies = doc.proxies;
+  
+  // Filter for US proxies (Google/AI requirement)
+  const usProxies = proxies
+    .filter(
+      (p: any) =>
+        p.name &&
+        (p.name.includes('US') ||
+          p.name.includes('🇺🇸') ||
+          p.name.includes('United States') ||
+          p.name.includes('美国'))
+    )
+    .map((p: any) => p.name);
+
+  // If US proxies exist, use them for AI-Group, otherwise use all proxies
+  const aiProxies = usProxies.length > 0 ? usProxies : proxies.map((p: any) => p.name);
+
+  const aiGroup = {
+    name: 'AI-Group',
+    type: 'url-test',
+    url: 'http://www.gstatic.com/generate_204',
+    interval: 300,
+    proxies: aiProxies,
+  };
+
+  if (!doc['proxy-groups']) {
+    doc['proxy-groups'] = [];
+  }
+  doc['proxy-groups'].unshift(aiGroup);
+
+  const targetGroup = 'AI-Group';
+
+  // Add rules for Google, Gemini, and ChatGPT
+  const newRules = [
+    // Google
+    `DOMAIN-SUFFIX,google.com,${targetGroup}`,
+    `DOMAIN-KEYWORD,google,${targetGroup}`,
+    `DOMAIN-SUFFIX,youtube.com,${targetGroup}`,
+    `DOMAIN-KEYWORD,youtube,${targetGroup}`,
+    `DOMAIN-SUFFIX,gstatic.com,${targetGroup}`,
+    `DOMAIN-SUFFIX,googleapis.com,${targetGroup}`,
+    `DOMAIN-SUFFIX,googleusercontent.com,${targetGroup}`,
+    `DOMAIN-SUFFIX,gvt1.com,${targetGroup}`,
+    `DOMAIN-SUFFIX,googlevideo.com,${targetGroup}`,
+    // Gemini
+    `DOMAIN,gemini.google.com,${targetGroup}`,
+    `DOMAIN,bard.google.com,${targetGroup}`,
+    `DOMAIN,generativelanguage.googleapis.com,${targetGroup}`,
+    // ChatGPT
+    `DOMAIN-SUFFIX,openai.com,${targetGroup}`,
+    `DOMAIN-SUFFIX,chatgpt.com,${targetGroup}`,
+    `DOMAIN-SUFFIX,ai.com,${targetGroup}`,
+    `DOMAIN-SUFFIX,oaistatic.com,${targetGroup}`,
+    `DOMAIN-SUFFIX,oaiusercontent.com,${targetGroup}`,
+    `DOMAIN-SUFFIX,auth0.com,${targetGroup}`, // Common for ChatGPT login
+    `DOMAIN-SUFFIX,identrust.com,${targetGroup}`,
+  ];
+
+  if (!doc.rules) {
+    doc.rules = [];
+  }
+  doc.rules.unshift(...newRules);
+
+  return stringify(doc);
+}
+
 @Injectable()
 export class FetcherService {
   async fetchYaml(url: string): Promise<{
@@ -141,6 +219,7 @@ export class FetcherService {
     if (!parsed || (!parsed.proxies && !parsed['proxy-groups'])) {
       data = buildClashYamlFromSs(data);
     }
+    data = enhanceClashConfig(data);
     return {
       data,
       headers,
