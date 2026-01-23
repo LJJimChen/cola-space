@@ -8,7 +8,7 @@ export class CrawlerService {
   // private dashboardUrl = `${this.baseUrl}/#/dashboard`;
   private readonly logger = new Logger(CrawlerService.name);
 
-  async getSubscriptionUrl(): Promise<string> {
+  async getSubscriptionInfo(): Promise<{ url: string; usage?: { used: number; total: number } }> {
     const headless = process.env.HEADLESS !== 'false';
     const stepDelayMs = process.env.STEP_DELAY_MS
       ? Number(process.env.STEP_DELAY_MS)
@@ -26,6 +26,7 @@ export class CrawlerService {
       origin: this.baseUrl,
     });
     const page = await context.newPage();
+    try {
     await page.goto(this.baseUrl, { waitUntil: 'domcontentloaded' });
     try {
       await page.waitForURL((u) => u.toString() !== this.baseUrl, {
@@ -115,6 +116,59 @@ export class CrawlerService {
     }
     this.logger.log('dashboard ready');
     await page.waitForLoadState('networkidle');
+
+    // Extract usage info
+    let usage: { used: number; total: number } | undefined;
+    try {
+      const text = await page.innerText('body');
+      // Look for patterns like "已用 10.5 GB" "剩余 89.5 GB" "总计 100 GB"
+      // or "10.5 GB / 100 GB"
+      
+      const parseSize = (str: string) => {
+        const m = str.match(/([\d.]+)\s*(GB|MB|KB|B)/i);
+        if (!m) return 0;
+        const val = parseFloat(m[1]);
+        const unit = m[2].toUpperCase();
+        if (unit === 'GB') return val * 1024 * 1024 * 1024;
+        if (unit === 'MB') return val * 1024 * 1024;
+        if (unit === 'KB') return val * 1024;
+        return val;
+      };
+
+      // Try to find "Used" and "Total" numbers
+      // Example: "已用: 50GB" "总计: 100GB"
+      // Or look for progress bars usually having text inside or nearby
+      
+      // Strategy: Find all text matching size pattern, and try to deduce context
+      // But simpler: look for "已用" (Used) and "总计" (Total) near numbers
+      
+      const usedMatch = text.match(/(已用|Used)\s*[:：]?\s*([\d.]+\s*[GMK]B)/i);
+      const totalMatch = text.match(/(总计|总共|Total)\s*[:：]?\s*([\d.]+\s*[GMK]B)/i);
+      
+      if (usedMatch && totalMatch) {
+        usage = {
+          used: parseSize(usedMatch[2]),
+          total: parseSize(totalMatch[2]),
+        };
+      } else {
+         // Try finding "X GB / Y GB" pattern
+         const slashMatch = text.match(/([\d.]+\s*[GMK]B)\s*\/\s*([\d.]+\s*[GMK]B)/i);
+         if (slashMatch) {
+             usage = {
+                 used: parseSize(slashMatch[1]),
+                 total: parseSize(slashMatch[2])
+             };
+         }
+      }
+      if (usage) {
+        this.logger.log(`Found usage: ${(usage.used / 1024 / 1024 / 1024).toFixed(2)}GB / ${(usage.total / 1024 / 1024 / 1024).toFixed(2)}GB`);
+      } else {
+        this.logger.warn('Could not extract usage info');
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to extract usage: ${e}`);
+    }
+
     await page
       .locator(
         '#main-container > div > div:nth-child(3) > div > div > div.block-content.p-0 > div > div > div:nth-child(2)'
@@ -158,9 +212,18 @@ export class CrawlerService {
       if (match) url = match[0];
       if (url) this.logger.log('got url from inner text');
     }
-    await browser.close();
+    
     if (!url) throw new Error('subscription url not found');
     this.logger.log('subscription url found');
-    return url;
+    return { url, usage };
+    } finally {
+        await browser.close();
+    }
   }
+
+  async getSubscriptionUrl(): Promise<string> {
+      const info = await this.getSubscriptionInfo();
+      return info.url;
+  }
+
 }
