@@ -14,6 +14,23 @@ export class SubscribeService {
   ) {}
   private readonly logger = new Logger(SubscribeService.name);
 
+  private countProxies(data: string): number {
+    try {
+      const parsed = (0, import('yaml').parse)(data);
+      if (!parsed) return 0;
+      if (Array.isArray(parsed?.proxies)) return parsed.proxies.length;
+      if (Array.isArray(parsed?.['proxy-groups'])) {
+        return parsed['proxy-groups'].reduce(
+          (sum: number, g: any) => sum + (Array.isArray(g?.proxies) ? g.proxies.length : 0),
+          0,
+        );
+      }
+      return 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   async refresh() {
     this.logger.log('refresh start');
     
@@ -23,7 +40,12 @@ export class SubscribeService {
       try {
         this.logger.log('try fetch via meta url');
         const r = await this.fetcher.fetchYaml(meta.url);
-        
+
+        const nodeCount = this.countProxies(r.data);
+        if (nodeCount === 0) {
+          throw new Error('no nodes in fetched YAML via meta url');
+        }
+
         // Try to check traffic from headers
         this.checkTrafficFromHeaders(r.headers);
 
