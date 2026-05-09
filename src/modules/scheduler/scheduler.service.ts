@@ -12,6 +12,7 @@ import { SubscribeService } from '../subscribe/subscribe.service';
 export class SchedulerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SchedulerService.name);
   private job?: CronJob;
+  private weeklyJob?: CronJob;
 
   constructor(
     private readonly subscribeService: SubscribeService,
@@ -33,6 +34,18 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
     this.schedulerRegistry.addCronJob('subscribeRefresh', this.job);
     this.job.start();
     this.logger.log(`cron started with expr: ${expr} tz: ${tz}`);
+    this.weeklyJob = new CronJob('0 4 * * 0', async () => {
+      if (process.env.CRON_ENABLED === 'false') return;
+      try {
+        const r = await this.subscribeService.refreshForced();
+        this.logger.log(`weekly forced refresh ${JSON.stringify(r)}`);
+      } catch (e: any) {
+        this.logger.error(`weekly forced refresh failed ${e?.message || e}`);
+      }
+    }, undefined, false, 'Asia/Shanghai');
+    this.schedulerRegistry.addCronJob('subscribeWeeklyForcedRefresh', this.weeklyJob);
+    this.weeklyJob.start();
+    this.logger.log('weekly forced refresh cron started (Sundays at 04:00 Asia/Shanghai)');
   }
 
   onModuleDestroy() {
@@ -40,6 +53,10 @@ export class SchedulerService implements OnModuleInit, OnModuleDestroy {
       if (this.job) {
         this.job.stop();
         this.schedulerRegistry.deleteCronJob('subscribeRefresh');
+      }
+      if (this.weeklyJob) {
+        this.weeklyJob.stop();
+        this.schedulerRegistry.deleteCronJob('subscribeWeeklyForcedRefresh');
       }
     } catch (_) {}
   }

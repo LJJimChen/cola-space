@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { parse as parseYaml } from 'yaml';
 import { CrawlerService } from '../../services/crawler.service';
 import { FetcherService } from '../../services/fetcher.service';
 import { StorageService } from '../../services/storage.service';
@@ -16,7 +17,7 @@ export class SubscribeService {
 
   private countProxies(data: string): number {
     try {
-      const parsed = (0, import('yaml').parse)(data);
+      const parsed = parseYaml(data);
       if (!parsed) return 0;
       if (Array.isArray(parsed?.proxies)) return parsed.proxies.length;
       if (Array.isArray(parsed?.['proxy-groups'])) {
