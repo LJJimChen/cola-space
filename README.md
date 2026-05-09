@@ -136,17 +136,6 @@ pnpm run build
 pnpm run start
 ```
 
-## Docker / Compose
-
-- `docker-compose.yml` 使用 `.env.local` 作为容器环境变量来源，并挂载 `./.data` 做持久化
-- 若在容器内运行 Playwright，建议保留 `shm_size: "1g"` 以减少浏览器崩溃概率
-
-```bash
-pnpm run compose:build
-pnpm run compose:up
-pnpm run compose:logs
-```
-
 ## 部署（GitHub Actions + PM2）
 
 - CI：`.github/workflows/deploy.yml`
@@ -158,5 +147,4 @@ pnpm run compose:logs
 
 - 请务必修改 `API_KEY` 的默认值，避免公开接口被滥用
 - 首次运行时如果需要爬虫登录，请确保 `COFFEE_*` 配置完整
-- Dockerfile 当前使用 `npm ci` 并复制 `package-lock.json`，若仓库实际以 pnpm 为准，需要同步 lockfile 或调整构建方式
 
