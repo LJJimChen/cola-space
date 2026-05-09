@@ -37,6 +37,7 @@
     "yaml": "^2.8.2"
   },
   "devDependencies": {
+    "@types/node": "^20.19.0",
     "pm2": "^5.4.3",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",

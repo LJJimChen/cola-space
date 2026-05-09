@@ -5,6 +5,7 @@
     "moduleResolution": "node",
     "outDir": "dist",
     "rootDir": "src",
+    "ignoreDeprecations": "5.0",
     "baseUrl": "./",
     "paths": {
       "*": ["node_modules/*"]

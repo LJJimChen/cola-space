@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { existsSync, mkdirSync } from 'fs';
+import path from 'path';
 import { chromium } from 'playwright';
 
 @Injectable()
@@ -8,6 +10,79 @@ export class CrawlerService {
   // private dashboardUrl = `${this.baseUrl}/#/dashboard`;
   private readonly logger = new Logger(CrawlerService.name);
 
+  private getDataDir() {
+    return path.resolve(process.env.DATA_DIR || './.data');
+  }
+
+  private isPersistStateEnabled() {
+    const v = (process.env.CRAWLER_PERSIST_STATE || 'true').toLowerCase();
+    return !['0', 'false', 'no'].includes(v);
+  }
+
+  private getStorageStatePath() {
+    return (
+      process.env.CRAWLER_STORAGE_STATE_PATH ||
+      path.join(this.getDataDir(), 'playwright-state.json')
+    );
+  }
+
+  private async isCloudflareChallenge(page: any) {
+    try {
+      const u = String(page.url() || '');
+      if (u.includes('/cdn-cgi/') || u.includes('challenges.cloudflare.com')) return true;
+      const title = String((await page.title()) || '').toLowerCase();
+      if (title.includes('just a moment')) return true;
+      const iframeCount = await page
+        .locator('iframe[src*="challenges.cloudflare.com"]')
+        .count();
+      if (iframeCount > 0) return true;
+      const html = String((await page.content()) || '').toLowerCase();
+      if (
+        html.includes('cf-browser-verification') ||
+        html.includes('cf-challenge') ||
+        html.includes('cloudflare')
+      )
+        return true;
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  private async assertNotCloudflare(page: any, stage: string) {
+    const blocked = await this.isCloudflareChallenge(page);
+    if (!blocked) return;
+    const manualWaitMs = process.env.CRAWLER_MANUAL_CF_WAIT_MS
+      ? Number(process.env.CRAWLER_MANUAL_CF_WAIT_MS)
+      : 0;
+    if (manualWaitMs > 0 && process.env.HEADLESS === 'false') {
+      this.logger.warn(
+        `Cloudflare verification detected at ${stage}, waiting up to ${manualWaitMs}ms for manual completion`
+      );
+      const start = Date.now();
+      while (Date.now() - start < manualWaitMs) {
+        await page.waitForTimeout(2000);
+        const stillBlocked = await this.isCloudflareChallenge(page);
+        if (!stillBlocked) return;
+      }
+    }
+    const statePath = this.getStorageStatePath();
+    throw new Error(
+      `检测到 Cloudflare 验证页（阶段：${stage}）。本项目不会也不能绕过验证码/风控。建议：1）在 Cloudflare 控制台对该路径或服务器 IP 做白名单/降低挑战强度；2）改用服务商提供的官方接口或直接订阅链接；3）本地以 HEADLESS=false 运行一次并手工通过验证后，持久化 storageState 到 ${statePath}（CRAWLER_PERSIST_STATE=true）供后续复用。`
+    );
+  }
+
+  private async waitForDashboard(page: any, timeoutMs: number) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const u = String(page.url() || '');
+      if (u.includes('#/dashboard')) return;
+      await this.assertNotCloudflare(page, 'waiting_dashboard');
+      await page.waitForTimeout(2000);
+    }
+    throw new Error('dashboard not reached before timeout');
+  }
+
   async getSubscriptionInfo(): Promise<{ url: string; usage?: { used: number; total: number } }> {
     const headless = process.env.HEADLESS !== 'false';
     const stepDelayMs = process.env.STEP_DELAY_MS
@@ -16,106 +91,116 @@ export class CrawlerService {
     const redirectTimeoutMs = process.env.REDIRECT_TIMEOUT_MS
       ? Number(process.env.REDIRECT_TIMEOUT_MS)
       : 15000;
+    const dashboardTimeoutMs = process.env.DASHBOARD_TIMEOUT_MS
+      ? Number(process.env.DASHBOARD_TIMEOUT_MS)
+      : 60000;
     this.logger.log(`start headless=${headless} base=${this.baseUrl}`);
     const browser = await chromium.launch({ headless, slowMo: stepDelayMs });
-    const context = await browser.newContext({
-      userAgent:
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36',
-    });
+    const userAgent =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
+    const persistState = this.isPersistStateEnabled();
+    const statePath = this.getStorageStatePath();
+    if (persistState) mkdirSync(this.getDataDir(), { recursive: true });
+    const contextOptions: any = { userAgent };
+    if (persistState && existsSync(statePath)) contextOptions.storageState = statePath;
+    const context = await browser.newContext(contextOptions);
     await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
       origin: this.baseUrl,
     });
     const page = await context.newPage();
     try {
-    await page.goto(this.baseUrl, { waitUntil: 'domcontentloaded' });
-    try {
-      await page.waitForURL((u) => u.toString() !== this.baseUrl, {
-        timeout: redirectTimeoutMs,
-      });
-    } catch (_) {}
-    await page.waitForTimeout(10000);
-    const current = page.url();
-    if (current && /^https?:\/\//.test(current)) {
-      const u = new URL(current);
-      const newBase = u.origin;
-      if (newBase !== this.baseUrl) {
-        this.baseUrl = newBase;
-        this.loginUrl = `${this.baseUrl}/#/login`;
-        await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
-          origin: this.baseUrl,
+      await page.goto(this.baseUrl, { waitUntil: 'domcontentloaded' });
+      try {
+        await page.waitForURL((u: any) => u.toString() !== this.baseUrl, {
+          timeout: redirectTimeoutMs,
         });
-        this.logger.log(`redirected base to ${this.baseUrl}`);
+      } catch (_) {}
+      await page.waitForTimeout(10000);
+      await this.assertNotCloudflare(page, 'landing');
+      const current = page.url();
+      if (current && /^https?:\/\//.test(current)) {
+        const u = new URL(current);
+        const newBase = u.origin;
+        if (newBase !== this.baseUrl) {
+          this.baseUrl = newBase;
+          this.loginUrl = `${this.baseUrl}/#/login`;
+          await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+            origin: this.baseUrl,
+          });
+          this.logger.log(`redirected base to ${this.baseUrl}`);
+        }
       }
-    }
-    const username = process.env.COFFEE_USERNAME || '';
-    const password = process.env.COFFEE_PASSWORD || '';
-    let onDashboard = /#\/dashboard/.test(page.url());
-    if (!onDashboard) {
-      this.logger.log('navigate login');
-      await page.goto(this.loginUrl, { waitUntil: 'networkidle' });
-      onDashboard = /#\/dashboard/.test(page.url());
+      const username = process.env.COFFEE_USERNAME || '';
+      const password = process.env.COFFEE_PASSWORD || '';
+      let onDashboard = /#\/dashboard/.test(page.url());
       if (!onDashboard) {
-        let filledUser = false;
-        const userLocators = [
-          page.getByPlaceholder(/邮箱|email|e-mail/i),
-          page.locator('input[placeholder*="邮箱" i]'),
-          page.locator('input[type="email"]'),
-          page.locator('.block-content input[type="text"]'),
-          page.locator('input.form-control-alt[type="text"]'),
-          page.locator('input[type="text"]'),
-        ];
-        for (const l of userLocators) {
-          try {
-            const c = await l.count();
-            if (c > 0) {
-              await l.first().fill(username);
-              filledUser = true;
-              this.logger.log('filled username');
-              break;
-            }
-          } catch (_) {}
+        this.logger.log('navigate login');
+        await page.goto(this.loginUrl, { waitUntil: 'networkidle' });
+        await this.assertNotCloudflare(page, 'login_page');
+        onDashboard = /#\/dashboard/.test(page.url());
+        if (!onDashboard) {
+          const userLocators = [
+            page.getByPlaceholder(/邮箱|email|e-mail/i),
+            page.locator('input[placeholder*="邮箱" i]'),
+            page.locator('input[type="email"]'),
+            page.locator('.block-content input[type="text"]'),
+            page.locator('input.form-control-alt[type="text"]'),
+            page.locator('input[type="text"]'),
+          ];
+          for (const l of userLocators) {
+            try {
+              const c = await l.count();
+              if (c > 0) {
+                await l.first().fill(username);
+                this.logger.log('filled username');
+                break;
+              }
+            } catch (_) {}
+          }
+          const passLocators = [
+            page.getByPlaceholder(/密码|password/i),
+            page.locator('input[placeholder*="密码" i]'),
+            page.locator('input[type="password"]'),
+            page.locator('.block-content input[type="password"]'),
+          ];
+          for (const l of passLocators) {
+            try {
+              const c = await l.count();
+              if (c > 0) {
+                await l.first().fill(password);
+                this.logger.log('filled password');
+                break;
+              }
+            } catch (_) {}
+          }
+          const buttonLocators = [
+            page.getByRole('button', { name: /登录|登入|sign\s*in|log\s*in/i }),
+            page.locator('button[type="submit"]'),
+            page.locator('button.btn-primary'),
+            page.locator('button:has-text("登入"), button:has-text("登录")'),
+          ];
+          for (const l of buttonLocators) {
+            try {
+              const c = await l.count();
+              if (c > 0) {
+                await l.first().click();
+                this.logger.log('clicked login');
+                break;
+              }
+            } catch (_) {}
+          }
+          await this.waitForDashboard(page, dashboardTimeoutMs);
         }
-        let filledPass = false;
-        const passLocators = [
-          page.getByPlaceholder(/密码|password/i),
-          page.locator('input[placeholder*="密码" i]'),
-          page.locator('input[type="password"]'),
-          page.locator('.block-content input[type="password"]'),
-        ];
-        for (const l of passLocators) {
-          try {
-            const c = await l.count();
-            if (c > 0) {
-              await l.first().fill(password);
-              filledPass = true;
-              this.logger.log('filled password');
-              break;
-            }
-          } catch (_) {}
-        }
-        const buttonLocators = [
-          page.getByRole('button', { name: /登录|登入|sign\s*in|log\s*in/i }),
-          page.locator('button[type="submit"]'),
-          page.locator('button.btn-primary'),
-          page.locator('button:has-text("登入"), button:has-text("登录")'),
-        ];
-        for (const l of buttonLocators) {
-          try {
-            const c = await l.count();
-            if (c > 0) {
-              await l.first().click();
-              this.logger.log('clicked login');
-              break;
-            }
-          } catch (_) {}
-        }
-        await page.waitForURL((url) => url.toString().includes('#/dashboard'), {
-          timeout: 60000,
-        });
       }
-    }
-    this.logger.log('dashboard ready');
-    await page.waitForLoadState('networkidle');
+      this.logger.log('dashboard ready');
+      await this.assertNotCloudflare(page, 'dashboard');
+      await page.waitForLoadState('networkidle');
+      if (persistState) {
+        try {
+          await context.storageState({ path: statePath });
+          this.logger.log('saved storageState');
+        } catch (_) {}
+      }
 
     // Extract usage info
     let usage: { used: number; total: number } | undefined;
@@ -215,6 +300,11 @@ export class CrawlerService {
     
     if (!url) throw new Error('subscription url not found');
     this.logger.log('subscription url found');
+    if (persistState) {
+      try {
+        await context.storageState({ path: statePath });
+      } catch (_) {}
+    }
     return { url, usage };
     } finally {
         await browser.close();
