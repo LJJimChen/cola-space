@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { chromium } from 'playwright-extra';
-import stealth from 'playwright-extra-plugin-stealth';
+import stealth from 'puppeteer-extra-plugin-stealth';
 
 @Injectable()
 export class StealthService {

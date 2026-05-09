@@ -5,10 +5,11 @@ import { CrawlerService } from '../../services/crawler.service';
 import { FetcherService } from '../../services/fetcher.service';
 import { StorageService } from '../../services/storage.service';
 import { MailService } from '../../services/mail.service';
+import { StealthService } from '../../services/stealth.service';
 
 @Module({
   controllers: [SubscribeController],
-  providers: [SubscribeService, CrawlerService, FetcherService, StorageService, MailService],
+  providers: [SubscribeService, CrawlerService, FetcherService, StorageService, MailService, StealthService],
   exports: [SubscribeService],
 })
 export class SubscribeModule {}
