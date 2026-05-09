@@ -27,20 +27,25 @@ export class StealthService {
     return { width, height };
   }
 
-  async createStealthContext() {
+  async createStealthContext(options?: { headless?: boolean; slowMo?: number }) {
     chromium.use(stealth());
 
-    const headless = process.env.HEADLESS !== 'false';
+    const headless = options?.headless ?? (process.env.HEADLESS !== 'false');
+    const slowMo = options?.slowMo;
     const viewport = this.randomViewport();
     const userAgent = this.randomUA();
 
-    const context = await chromium.launch({ headless }).then(b => b.newContext({
+    const launchOptions: any = { headless };
+    if (slowMo !== undefined) launchOptions.slowMo = slowMo;
+
+    const browser = await chromium.launch(launchOptions);
+    const context = await browser.newContext({
       userAgent,
       viewport,
-    }));
+    });
 
     this.logger.log(`stealth context created: ${viewport.width}x${viewport.height}, UA: ${userAgent.slice(0, 50)}...`);
-    return context;
+    return { browser, context };
   }
 
   async humanClick(page: any, locator: any) {

@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { existsSync, mkdirSync } from 'fs';
 import path from 'path';
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-extra';
+import { StealthService } from './stealth.service';
 
 @Injectable()
 export class CrawlerService {
@@ -9,6 +10,8 @@ export class CrawlerService {
   private loginUrl = `${this.baseUrl}/#/login`;
   // private dashboardUrl = `${this.baseUrl}/#/dashboard`;
   private readonly logger = new Logger(CrawlerService.name);
+
+  constructor(private readonly stealthService: StealthService) {}
 
   private getDataDir() {
     return path.resolve(process.env.DATA_DIR || './.data');
@@ -95,15 +98,13 @@ export class CrawlerService {
       ? Number(process.env.DASHBOARD_TIMEOUT_MS)
       : 60000;
     this.logger.log(`start headless=${headless} base=${this.baseUrl}`);
-    const browser = await chromium.launch({ headless, slowMo: stepDelayMs });
-    const userAgent =
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
     const persistState = this.isPersistStateEnabled();
     const statePath = this.getStorageStatePath();
     if (persistState) mkdirSync(this.getDataDir(), { recursive: true });
-    const contextOptions: any = { userAgent };
-    if (persistState && existsSync(statePath)) contextOptions.storageState = statePath;
-    const context = await browser.newContext(contextOptions);
+    const { browser, context } = await this.stealthService.createStealthContext({ headless, slowMo: stepDelayMs });
+    if (persistState && existsSync(statePath)) {
+      await context.storageState({ path: statePath });
+    }
     await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
       origin: this.baseUrl,
     });
@@ -151,7 +152,7 @@ export class CrawlerService {
             try {
               const c = await l.count();
               if (c > 0) {
-                await l.first().fill(username);
+                await this.stealthService.humanType(page, username, l.first());
                 this.logger.log('filled username');
                 break;
               }
@@ -167,7 +168,7 @@ export class CrawlerService {
             try {
               const c = await l.count();
               if (c > 0) {
-                await l.first().fill(password);
+                await this.stealthService.humanType(page, password, l.first());
                 this.logger.log('filled password');
                 break;
               }
@@ -183,7 +184,7 @@ export class CrawlerService {
             try {
               const c = await l.count();
               if (c > 0) {
-                await l.first().click();
+                await this.stealthService.humanClick(page, l.first());
                 this.logger.log('clicked login');
                 break;
               }
@@ -195,6 +196,7 @@ export class CrawlerService {
       this.logger.log('dashboard ready');
       await this.assertNotCloudflare(page, 'dashboard');
       await page.waitForLoadState('networkidle');
+      await this.stealthService.humanScroll(page);
       if (persistState) {
         try {
           await context.storageState({ path: statePath });
