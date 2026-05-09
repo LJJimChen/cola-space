@@ -86,6 +86,31 @@ export class SubscribeService {
     throw new Error('refresh failed after 5 attempts');
   }
 
+  async refreshForced() {
+    this.logger.log('refreshForced start — skipping meta url, using crawler only');
+
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        const info = await this.crawler.getSubscriptionInfo();
+        const url = info.url;
+        this.logger.log(`refreshForced crawler obtained url attempt ${attempt}`);
+
+        if (info.usage) {
+          await this.checkAndNotifyTraffic(info.usage.used, info.usage.total);
+        }
+
+        const r = await this.fetcher.fetchYaml(url);
+        await this.storage.saveYaml(url, r.data, r.headers);
+        this.logger.log('refreshForced fetched and saved via crawler url');
+        return { url };
+      } catch (e: any) {
+        this.logger.warn(`refreshForced attempt ${attempt} failed: ${e.message}`);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+    throw new Error('refreshForced failed after 5 attempts');
+  }
+
   private checkTrafficFromHeaders(headers: Record<string, string>) {
     if (!process.env.MAIL_TO) return;
 
