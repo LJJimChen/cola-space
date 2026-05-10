@@ -63,18 +63,7 @@ export class SubscribeService {
       try {
         this.logger.log('try fetch via meta url');
         const r = await this.fetcher.fetchYaml(meta.url);
-
-        const nodeCount = this.countProxies(r.data);
-        if (nodeCount === 0) {
-          throw new Error('no nodes in fetched YAML via meta url');
-        }
-
-        // Try to check traffic from headers
-        this.checkTrafficFromHeaders(r.headers);
-
-        await this.storage.saveYaml(meta.url, r.data, r.headers);
-        this.logger.log('fetched and saved via meta url');
-        return { url: meta.url };
+        return await this.validateAndSave(meta.url, r.data, r.headers, 'meta-url');
       } catch (_) {
         this.logger.warn('fetch via meta url failed');
       }
