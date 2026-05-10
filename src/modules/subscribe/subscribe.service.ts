@@ -144,14 +144,31 @@ export class SubscribeService {
 
     const threshold = Number(process.env.TRAFFIC_THRESHOLD) || 0.5;
     const ratio = total > 0 ? used / total : 0;
-    
+
     this.logger.log(`Traffic usage: ${(used / 1e9).toFixed(2)}GB / ${(total / 1e9).toFixed(2)}GB (${(ratio * 100).toFixed(1)}%)`);
-    
+
     if (ratio > threshold) {
       const subject = `[Cola-Space] Traffic Alert: ${(ratio * 100).toFixed(1)}% Used`;
       const text = `Traffic usage has exceeded ${(threshold * 100).toFixed(0)}%.\n\nUsed: ${(used / 1e9).toFixed(2)} GB\nTotal: ${(total / 1e9).toFixed(2)} GB\nRatio: ${(ratio * 100).toFixed(1)}%`;
       await this.mail.sendMail(subject, text);
     }
+  }
+
+  private async notifyEmptyNodes(source: string, url: string, attempt?: number) {
+    if (!process.env.MAIL_TO) return;
+
+    const subject = `[Cola-Space] Critical: No nodes fetched`;
+    const attemptText = attempt ? `Attempt ${attempt} / 5` : 'Single attempt';
+    const text = `Failed to fetch valid subscription data. No proxy nodes found.
+
+${attemptText}
+Source: ${source}
+URL: ${url}
+
+Old data has been preserved. The system will retry automatically.`;
+
+    await this.mail.sendMail(subject, text);
+    this.logger.log(`Empty nodes notification sent for ${source} attempt ${attempt || 1}`);
   }
 
   async getLatestYaml() {
