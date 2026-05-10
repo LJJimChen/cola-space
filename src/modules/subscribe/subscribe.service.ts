@@ -87,9 +87,7 @@ export class SubscribeService {
           this.checkTrafficFromHeaders(r.headers);
         }
 
-        await this.storage.saveYaml(url, r.data, r.headers);
-        this.logger.log('fetched and saved via crawler url');
-        return { url };
+        return await this.validateAndSave(url, r.data, r.headers, 'crawler', attempt);
       } catch (e: any) {
         this.logger.warn(`crawler attempt ${attempt} failed: ${e.message}`);
         await new Promise((resolve) => setTimeout(resolve, 2000));
