@@ -32,6 +32,28 @@ export class SubscribeService {
     }
   }
 
+  private async validateAndSave(
+    url: string,
+    data: string,
+    headers: Record<string, string>,
+    source: 'meta-url' | 'crawler',
+    attempt?: number
+  ) {
+    const nodeCount = this.countProxies(data);
+
+    if (nodeCount === 0) {
+      await this.notifyEmptyNodes(source, url, attempt);
+      throw new Error(`no nodes fetched from ${source}`);
+    }
+
+    // Try to check traffic from headers
+    this.checkTrafficFromHeaders(headers);
+
+    await this.storage.saveYaml(url, data, headers);
+    this.logger.log(`fetched and saved via ${source}, nodes: ${nodeCount}`);
+    return { url };
+  }
+
   async refresh() {
     this.logger.log('refresh start');
     
